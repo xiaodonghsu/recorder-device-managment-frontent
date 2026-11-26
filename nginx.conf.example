@@ -1,0 +1,110 @@
+# ==========================================================================
+# 嘉环声枢 · 管理后台 + 后端 API 反向代理
+#
+# 部署拓扑：
+#   浏览器 ──> nginx :40000
+#              ├── /voicehub/      → 管理后台静态资源（frontend/ 目录）
+#              └── /voicehub-api/  → 后端服务 127.0.0.1:8040
+#
+# 后端服务需配置 API_PREFIX=/voicehub-api（见 backend/.env）：
+#   API_PREFIX=/voicehub-api
+#
+# 用法：
+#   1. 把 frontend/ 放到服务器，例如 /opt/voicehub/frontend/
+#   2. 按实际路径/证书修改下面的 location 与 ssl_* 配置
+#   3. nginx -t && nginx -s reload
+# ==========================================================================
+
+upstream voicehub_api {
+    server 127.0.0.1:8040;
+    keepalive 16;
+}
+
+server {
+    listen 40000 ssl;
+    server_name office.uassist.cn;
+
+    # ---- 证书（沿用同机 Casdoor 的证书即可）----
+    ssl_certificate     /etc/nginx/ssl/office.uassist.cn.crt;
+    ssl_certificate_key /etc/nginx/ssl/office.uassist.cn.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:voicehub:10m;
+
+    # 统一字符集，避免中文乱码
+    charset utf-8;
+
+    access_log /var/log/nginx/voicehub.access.log;
+    error_log  /var/log/nginx/voicehub.error.log;
+
+    # ------------------------------------------------------------------
+    # ① 管理后台静态资源
+    # ------------------------------------------------------------------
+    # 访问 https://office.uassist.cn:40000/voicehub/
+    location = /voicehub {
+        return 301 /voicehub/;
+    }
+
+    location ^~ /voicehub/assets/ {
+        alias /opt/voicehub/frontend/assets/;
+        access_log off;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    location /voicehub/ {
+        alias /opt/voicehub/frontend/;
+        index index.html;
+        # 前端使用哈希路由（#/devices），无需 history 回退
+        # 若将来改为 history 路由，取消下一行注释：
+        # try_files $uri $uri/ /voicehub/index.html;
+    }
+
+    # ------------------------------------------------------------------
+    # ② 后端 API 反向代理
+    # ------------------------------------------------------------------
+    # 浏览器只访问同源的 /voicehub-api，无需 CORS。
+    # proxy_pass 不带 URI 部分 → 原始路径原样透传给后端。
+    location /voicehub-api/ {
+        proxy_pass http://voicehub_api;
+
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection        "";
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout    60s;
+        proxy_read_timeout    60s;
+        proxy_buffering       off;
+    }
+
+    # ------------------------------------------------------------------
+    # ③ 健康检查（无需鉴权，便于探活）
+    #    注意：/healthz 与 /readyz 注册在应用根路径，不带 API_PREFIX，
+    #    所以这里显式指向后端根路径。
+    # ------------------------------------------------------------------
+    location = /voicehub-api/healthz {
+        proxy_pass http://voicehub_api/healthz;
+        access_log off;
+    }
+
+    location = /voicehub-api/readyz {
+        proxy_pass http://voicehub_api/readyz;
+        access_log off;
+    }
+
+    # ------------------------------------------------------------------
+    # ④ 备选方案：不由 nginx 直接托管静态文件，
+    #    而是由后端服务托管（后端默认挂载 /admin），nginx 只做反向代理。
+    #    使用该方案时：backend/.env 设 SERVE_FRONTEND=true，
+    #    并把上面 ① 整段替换为：
+    #
+    #    location /voicehub/ {
+    #        proxy_pass http://voicehub_api/admin/;
+    #        proxy_set_header Host $host;
+    #        proxy_set_header X-Forwarded-Proto $scheme;
+    #    }
+    # ------------------------------------------------------------------
+}

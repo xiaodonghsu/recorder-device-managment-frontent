@@ -1,0 +1,116 @@
+/* ==========================================================================
+   嘉环声枢管理后台 · 设计令牌与基础排版
+   配色：海军蓝主色 + 中性灰底，专业克制，长表格阅读友好
+   ========================================================================== */
+
+:root {
+  /* 品牌色阶 */
+  --navy-900: #0A2144;
+  --navy-800: #12305A;
+  --navy-700: #1B3A6B;
+  --navy-600: #234E8C;
+  --brand:    #2E6BD6;
+  --brand-700:#2559B8;
+  --brand-100:#DCE6FA;
+  --brand-50: #EEF3FD;
+
+  /* 中性色 */
+  --bg:        #F1F4F9;
+  --surface:   #FFFFFF;
+  --surface-2: #F7F9FC;
+  --surface-3: #EDF1F7;
+  --border:        #E1E7F0;
+  --border-strong: #C8D3E2;
+
+  /* 文字 */
+  --text:   #17212E;
+  --text-2: #536175;
+  --text-3: #8493A7;
+  --text-inv: #FFFFFF;
+
+  /* 语义色 */
+  --ok:      #157F5B;  --ok-bg:   #E4F5EE;  --ok-bd:   #B4E3CE;
+  --warn:    #A85B06;  --warn-bg: #FDF2E0;  --warn-bd: #F2D6A8;
+  --err:     #BE3A2B;  --err-bg:  #FCEBE9;  --err-bd:  #F3C4BE;
+  --info:    #2E6BD6;  --info-bg: #E9F0FC;  --info-bd: #C2D7F6;
+  --muted:   #64748B;  --muted-bg:#EEF1F5;  --muted-bd:#DCE2EA;
+  --purple:  #6D43B8;  --purple-bg:#F1ECFB; --purple-bd:#D9CBF2;
+
+  /* 尺寸 */
+  --radius-sm: 6px;
+  --radius:    9px;
+  --radius-lg: 14px;
+  --sidebar-w: 232px;
+  --topbar-h:  62px;
+
+  --shadow-sm: 0 1px 2px rgba(18, 40, 70, .06);
+  --shadow:    0 2px 10px rgba(18, 40, 70, .08);
+  --shadow-lg: 0 18px 44px rgba(10, 30, 60, .18);
+
+  --font: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", -apple-system,
+          BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "SFMono-Regular", "JetBrains Mono", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -.01em; }
+p { margin: 0; }
+
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code {
+  font-family: var(--mono);
+  font-size: .88em;
+  background: var(--surface-3);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--navy-700);
+}
+
+.hidden, [hidden] { display: none !important; }
+
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.nowrap { white-space: nowrap; }
+.muted { color: var(--text-3); }
+.dim { color: var(--text-2); }
+.strong { font-weight: 600; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.grow { flex: 1 1 auto; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #C6D0DE; border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #A9B7CA; background-clip: content-box; }
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* 打印：隐藏交互控件，保留表格内容 */
+@media print {
+  .sidebar, .topbar, .toolbar, .pager, .no-print { display: none !important; }
+  body { background: #fff; }
+  .app-shell { display: block !important; }
+  .content { padding: 0 !important; }
+  .card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
+}

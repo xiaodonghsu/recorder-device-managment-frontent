@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>嘉环声枢 · 录音卡管理后台</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231B3A6B'/><path d='M12 9v14M20 9v14M8 13h16M8 19h16' stroke='white' stroke-width='2.2' stroke-linecap='round'/></svg>">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/layout.css">
+<link rel="stylesheet" href="assets/css/components.css">
+</head>
+<body>
+
+<!-- ══════════════════════════ 登录视图 ══════════════════════════ -->
+<div id="login-view" class="login-view">
+  <div class="login-panel">
+    <div class="login-brand">
+      <div class="login-logo">
+        <svg viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">
+          <rect width="32" height="32" rx="7" fill="#2E6BD6"/>
+          <path d="M12 9v14M20 9v14M8 13h16M8 19h16" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <h1>嘉环声枢</h1>
+        <p>录音卡设备管理后台</p>
+      </div>
+    </div>
+
+    <div class="login-tabs" role="tablist">
+      <button class="login-tab is-active" data-tab="token" role="tab">粘贴访问令牌</button>
+      <button class="login-tab" data-tab="casdoor" role="tab">Casdoor 登录</button>
+    </div>
+
+    <!-- 令牌登录 -->
+    <form id="form-token" class="login-pane is-active" autocomplete="off">
+      <p class="login-hint">
+        从 Casdoor 获取 Access Token 后粘贴到此处。也可在服务器根目录执行
+        <code>python scripts/whoami.py &lt;token&gt;</code> 自查身份与管理员判定。
+      </p>
+      <label class="field">
+        <span class="field-label">API 基址</span>
+        <input type="text" id="input-api-base" class="input" placeholder="自动探测，可手动修改">
+        <small class="field-tip">
+          启动时自动探测（nginx 部署下为同源 <code>/voicehub-api</code>）。如自动探测失败，请填写
+          <code>http://127.0.0.1:8040/voicehub-api</code>。
+        </small>
+      </label>
+      <label class="field">
+        <span class="field-label">Access Token</span>
+        <textarea id="input-token" class="input input-area" rows="4" placeholder="粘贴 Casdoor Access Token…" spellcheck="false"></textarea>
+      </label>
+      <button type="submit" class="btn btn-primary btn-block" id="btn-token-login">进入管理后台</button>
+    </form>
+
+    <!-- Casdoor 登录 -->
+    <form id="form-casdoor" class="login-pane" autocomplete="off">
+      <p class="login-hint" id="casdoor-hint">正在读取 Casdoor 登录参数…</p>
+      <button type="submit" class="btn btn-primary btn-block" id="btn-casdoor-login">使用 Casdoor 账号登录</button>
+      <p class="login-note">
+        需要后端配置 <code>CASDOOR_CLIENT_ID</code>，并在 Casdoor 应用后台登记本页面地址为回调地址。
+      </p>
+    </form>
+
+    <div id="login-error" class="login-error" hidden></div>
+  </div>
+
+  <div class="login-side">
+    <h2>设备资产全生命周期管理</h2>
+    <ul class="login-points">
+      <li><strong>设备档案</strong>：SN 入库、批量登记、型号固件维护</li>
+      <li><strong>领用记录</strong>：分配、归还，全程留痕</li>
+      <li><strong>APP 绑定</strong>：员工绑定、昵称、解绑撤销</li>
+      <li><strong>设备凭证</strong>：AuthKey 签发、轮换、撤销</li>
+      <li><strong>设备状态</strong>：电量、充电、录音与在线情况</li>
+      <li><strong>事件日志</strong>：全生命周期操作审计</li>
+    </ul>
+    <p class="login-side-foot">数据范围由服务端 Token 推导，跨企业访问一律拒绝。</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════ 后台视图 ══════════════════════════ -->
+<div id="app-view" class="app-shell" hidden>
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+        <rect width="32" height="32" rx="7" fill="rgba(255,255,255,.14)"/>
+        <path d="M12 9v14M20 9v14M8 13h16M8 19h16" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <strong>嘉环声枢</strong>
+        <span>设备管理后台</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" id="nav"></nav>
+
+    <div class="sidebar-foot">
+      <div class="sidebar-user" id="sidebar-user"></div>
+      <button class="btn btn-ghost-light btn-block btn-sm" id="btn-logout">退出登录</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-heading">
+        <h1 id="page-title">概览</h1>
+        <p id="page-desc"></p>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" id="btn-refresh" title="刷新当前页">
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M13.6 8a5.6 5.6 0 1 1-1.7-4M13 1.5V5H9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          刷新
+        </button>
+        <div class="topbar-user">
+          <span class="avatar" id="top-avatar">管</span>
+          <div class="topbar-user-text">
+            <strong id="top-username">—</strong>
+            <span id="top-tenant">—</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content" id="page-container"></main>
+  </div>
+</div>
+
+<!-- 全局宿主 -->
+<div id="toast-host" class="toast-host"></div>
+<div id="modal-host"></div>
+<div id="drawer-host"></div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/actions.js"></script>
+<script src="assets/js/pages/dashboard.js"></script>
+<script src="assets/js/pages/devices.js"></script>
+<script src="assets/js/pages/assignments.js"></script>
+<script src="assets/js/pages/bindings.js"></script>
+<script src="assets/js/pages/credentials.js"></script>
+<script src="assets/js/pages/statuses.js"></script>
+<script src="assets/js/pages/events.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
